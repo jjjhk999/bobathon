@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="IBM Bob 운영 자료 분석, Db2 SQL 실습과 Bobathon으로 이동하는 IBK 운영부 실습 가이드입니다.">
+  <meta name="theme-color" content="#0f62fe">
+  <title>IBM Bob · 실습 가이드</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161616;
+      --muted: #525252;
+      --border: #e0e0e0;
+      --surface: #f4f4f4;
+      --blue: #0f62fe;
+      --blue-dark: #0043ce;
+      font: 400 1rem/1.65 "IBM Plex Sans", "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      letter-spacing: .01em;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    h1, h2, h3, p { margin: 0; }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .wrap { width: min(calc(100% - 4rem), 71rem); margin-inline: auto; }
+    .skip { position: absolute; top: -5rem; left: 1rem; padding: .75rem 1rem; background: #fff; z-index: 2; }
+    .skip:focus { top: .5rem; }
+    .bar { border-bottom: 1px solid var(--border); }
+    .bar-inner { min-height: 3.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .brand { display: flex; align-items: center; gap: 1rem; font-weight: 700; }
+    .brand span { padding-left: 1rem; border-left: 1px solid #c6c6c6; font-size: .875rem; color: var(--muted); font-weight: 400; }
+    .organization { font-size: .875rem; color: var(--muted); }
+    main { flex: 1; }
+    .hero { padding-block: 4.5rem 3.5rem; }
+    .eyebrow { margin-bottom: 1rem; color: var(--blue-dark); font-size: .875rem; font-weight: 600; }
+    h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); font-weight: 400; letter-spacing: -.04em; line-height: 1.2; word-break: keep-all; }
+    .intro { max-width: 42rem; margin-top: 1.5rem; color: var(--muted); font-size: 1.125rem; word-break: keep-all; }
+    .guides { padding-bottom: 4rem; }
+    .section-heading { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    h2 { font-size: 1.5rem; font-weight: 600; line-height: 1.4; }
+    .section-heading p { color: var(--muted); font-size: .875rem; }
+    .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .cards li { min-width: 0; }
+    .card { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 22rem; padding: 1.75rem; border: 1px solid var(--border); text-decoration: none; }
+    .card:hover { border-color: var(--blue); background: #edf5ff; }
+    .card:focus-visible { outline-offset: -3px; }
+    .category { color: var(--muted); font-size: .875rem; }
+    .card-icon { width: 2rem; height: 2rem; margin: 1.25rem 0 1rem; color: var(--blue); }
+    h3 { font-size: 1.625rem; font-weight: 600; line-height: 1.4; word-break: keep-all; }
+    .description { margin-top: .75rem; color: var(--muted); word-break: keep-all; }
+    .topics { margin-top: 1.25rem; margin-bottom: 1.75rem; color: var(--muted); font-size: .875rem; }
+    .card-action { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--blue-dark); font-weight: 600; }
+    footer { border-top: 1px solid var(--border); background: var(--surface); }
+    .footer-inner { min-height: 4.5rem; padding-block: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .25rem 1rem; color: var(--muted); font-size: .875rem; }
+    @media (max-width: 56rem) {
+      .cards { grid-template-columns: minmax(0, 1fr); }
+      .card { min-height: auto; }
+      .card-icon { margin-block: 1rem .75rem; }
+      .topics { margin-bottom: 1.25rem; }
+      .hero { padding-block: 3rem 2.5rem; }
+    }
+    @media (max-width: 37.5rem) {
+      .wrap { width: calc(100% - 2rem); }
+      .brand span { display: none; }
+      .organization { font-size: .875rem; }
+      .card { padding: 1.5rem; }
+      .intro { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 건너뛰기</a>
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <p class="brand">IBM Bob <span>실습 가이드</span></p>
+      <p class="organization">IBK 운영부</p>
+    </div>
+  </header>
+  <main id="main">
+    <div class="wrap">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">IBM Bob · Hands-on</p>
+        <h1 id="page-title">IBM Bob 실습 가이드</h1>
+        <p class="intro">공통 실습으로 사용법을 익히고, Bobathon에서 내 업무에 적용해 보세요. 진행할 항목을 선택하면 해당 가이드로 이동합니다.</p>
+      </section>
+      <section class="guides" aria-labelledby="guides-title">
+        <div class="section-heading">
+          <h2 id="guides-title">진행할 실습을 선택하세요</h2>
+          <p>공통 실습 2개 · Bobathon</p>
+        </div>
+        <ul class="cards">
+          <li>
+            <a class="card" href="./guide_p01.html" aria-labelledby="guide-analysis-title" aria-describedby="guide-analysis-description">
+              <p class="category">공통 실습 1</p>
+              <svg class="card-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M5 4v23h23M9 21l6-8 5 4 8-11"/></svg>
+              <h3 id="guide-analysis-title">운영 자료 분석</h3>
+              <p class="description" id="guide-analysis-description">Rule·Skill을 직접 만들고 개선한 뒤, 배치 지연 자료로 보고서와 대시보드를 작성합니다.</p>
+              <p class="topics">Rule · Skill · 보고서 · 대시보드</p>
+              <span class="card-action">가이드 열기</span>
+            </a>
+          </li>
+          <li>
+            <a class="card" href="./guide_p02.html" aria-labelledby="guide-sql-title" aria-describedby="guide-sql-description">
+              <p class="category">공통 실습 2</p>
+              <svg class="card-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="m10 8-7 8 7 8m12-16 7 8-7 8M19 5l-6 22"/></svg>
+              <h3 id="guide-sql-title">Db2 SQL 작성·개선</h3>
+              <p class="description" id="guide-sql-description">프로젝트 모드와 규칙을 설정하고, SQL을 개선하며 실제 Db2 조회 시간을 비교합니다.</p>
+              <p class="topics">프로젝트 모드 · 규칙 · SQL 튜닝</p>
+              <span class="card-action">가이드 열기</span>
+            </a>
+          </li>
+          <li>
+            <a class="card" href="./guide_bobathon.html" aria-labelledby="guide-bobathon-title" aria-describedby="guide-bobathon-description">
+              <p class="category">자율 실습</p>
+              <svg class="card-icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M4 5h24v17H15l-7 6v-6H4zM9 11h14M9 16h10"/></svg>
+              <h3 id="guide-bobathon-title">Bobathon</h3>
+              <p class="description" id="guide-bobathon-description">반복하거나 시간이 오래 걸리는 업무를 골라, Bob과 개선안을 만들고 합성 데이터로 검증합니다.</p>
+              <p class="topics">업무 선정 · 합성 데이터 · 결과 검증</p>
+              <span class="card-action">가이드 열기</span>
+            </a>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+  <footer>
+    <div class="wrap footer-inner">
+      <p>IBM Bob · IBK 운영부 실습</p>
+      <p>공통 실습에서 내 업무 적용까지</p>
+    </div>
+  </footer>
+</body>
+</html>
