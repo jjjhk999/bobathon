@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IBM Bob으로 Db2 SQL 작성하고 개선하기</title>
+<style>
+  :root {
+    --blue: #0f62fe;
+    --blue-hover: #0050e6;
+    --ink: #161616;
+    --muted: #525252;
+    --surface: #f4f4f4;
+    --border: #e0e0e0;
+    --canvas: #fff;
+    color: var(--ink);
+    background: var(--canvas);
+    font: 400 16px/1.55 "IBM Plex Sans", "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+    letter-spacing: .16px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: 72px; }
+  body { margin: 0; }
+  h1, h2, h3, p { margin: 0; }
+  a { color: #0043ce; }
+  button, .button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+  .bar { position: sticky; top: 0; z-index: 1; background: var(--canvas); border-bottom: 1px solid var(--border); }
+  .wrap { width: min(100% - 64px, 1136px); margin-inline: auto; }
+  .bar-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 8px; }
+  .brand { font-weight: 600; white-space: nowrap; }
+  nav { display: flex; align-items: center; gap: 2px; }
+  nav a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 10px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  nav a:hover { background: var(--surface); color: var(--ink); }
+  .hero { padding-block: 64px 48px; border-bottom: 1px solid var(--border); }
+  .label, .time { font-size: 14px; color: var(--muted); }
+  h1 { font-size: clamp(36px, 5.2vw, 60px); font-weight: 300; line-height: 1.18; letter-spacing: -.4px; margin-top: 12px; overflow-wrap: break-word; }
+  .intro { margin-top: 16px; max-width: 680px; font-size: 18px; }
+  .button { display: inline-flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 48px; padding: 10px 16px; border: 1px solid transparent; cursor: pointer; text-decoration: none; font-size: 14px; border-radius: 0; }
+  .secondary { border-color: #0043ce; color: #0043ce; background: var(--canvas); }
+  .secondary:hover { background: var(--surface); }
+  .band { background: var(--surface); border-bottom: 1px solid var(--border); padding-block: 24px; }
+  .band ol { margin: 8px 0 0; padding-left: 22px; }
+  .band li + li { margin-top: 4px; }
+  .mcp-intro { margin-top: 16px; background: var(--canvas); }
+  h2 { font-size: clamp(26px, 3vw, 32px); font-weight: 400; line-height: 1.25; margin: 6px 0 14px; }
+  h3 { font-size: 17px; font-weight: 600; line-height: 1.35; }
+  .section { padding-block: 36px; border-bottom: 1px solid var(--border); }
+  .section > p:not(.time) { margin-bottom: 12px; }
+  #challenge1, #challenge2 { word-break: keep-all; overflow-wrap: anywhere; }
+  .split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; margin-top: 20px; }
+  .split > * { min-width: 0; }
+  .result-stack { grid-template-columns: minmax(0, 1fr); }
+  .result-table { min-width: 0; overflow-x: auto; }
+  .result-table table { margin-top: 0; font-variant-numeric: tabular-nums; }
+  .result-table .omitted { text-align: center; color: var(--muted); background: var(--surface); }
+  .tile { padding: 20px; border: 1px solid var(--border); }
+  .tile h3 { margin-bottom: 12px; }
+  .tile ul { margin: 0; padding-left: 20px; }
+  .tile li + li { margin-top: 6px; }
+  .tile p + p, .tile table + p { margin-top: 8px; }
+  .query-map { margin: 18px 0 0; padding: 18px; border: 1px solid var(--border); background: var(--surface); }
+  .query-map figcaption { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 12px; font-size: 14px; }
+  .query-map figcaption span { color: var(--muted); }
+  .table-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(155px, auto) minmax(0, 1fr); align-items: center; }
+  .table-card, .flow-card { min-width: 0; padding: 12px 14px; background: var(--canvas); border: 1px solid var(--border); }
+  .table-card { border-top: 3px solid var(--blue); align-self: stretch; }
+  .table-card h3 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 4px; }
+  .table-card h3 code { font-size: 15px; font-weight: 600; }
+  .table-count { color: #0043ce; font-size: 14px; white-space: nowrap; }
+  .table-link { display: grid; justify-items: center; gap: 2px; text-align: center; font-size: 13px; color: var(--muted); }
+  .table-link .key { display: flex; align-items: center; width: 100%; gap: 8px; }
+  .table-link .key::before, .table-link .key::after { content: ""; flex: 1; min-width: 10px; border-top: 1px solid #8d8d8d; }
+  .table-link code { color: #0043ce; font-size: 13px; }
+  .flow { display: grid; grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr); align-items: center; }
+  .flow-card { align-self: stretch; }
+  .flow-card h3 { margin-bottom: 4px; font-size: 15px; }
+  .flow-card p, .table-card p { font-size: 14px; }
+  .flow-result { background: #edf5ff; border-color: #a6c8ff; }
+  .map-arrow { display: block; text-align: center; color: #0043ce; line-height: 28px; }
+  .exercise-note { margin: 10px 0; font-size: 14px; color: var(--muted); }
+  details { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+  summary { cursor: pointer; color: #0043ce; }
+  pre { margin: 10px 0 0; white-space: pre-wrap; }
+  .sample-data { margin-top: 16px; padding: 12px 16px; border: 1px solid var(--border); }
+  .sample-data summary { font-weight: 600; }
+  .sample-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px 20px; margin-top: 10px; }
+  .sample-table { min-width: 0; overflow-x: auto; }
+  .sample-table table { margin-top: 0; font-variant-numeric: tabular-nums; }
+  .sample-table caption { color: var(--ink); font-weight: 600; }
+  .sample-table td, .sample-table th { padding: 6px 8px; }
+  .sample-table time { white-space: nowrap; }
+  .sample-key { color: #0043ce; font-weight: 600; }
+  .sample-data p { margin-top: 10px; font-size: 14px; }
+  .sql-source { margin-top: 16px; padding: 12px 16px; border: 1px solid var(--border); }
+  .sql-source summary { font-weight: 600; }
+  .sql-source summary code { margin-inline-start: 8px; color: var(--muted); }
+  .sql-source pre { max-height: 22rem; overflow: auto; padding: 12px; background: var(--surface); white-space: pre; }
+  .sql-source pre code { font-size: 13px; overflow-wrap: normal; }
+  .section > .sql-cost { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+  .activity-steps { margin: 0; padding-inline-start: 24px; }
+  .activity-steps li { padding-inline-start: 4px; }
+  .activity-steps li::marker { color: #0043ce; font-weight: 600; }
+  .tile .activity-steps li + li { margin-top: 14px; }
+  .activity-steps p { margin-top: 3px; }
+  .prompt { background: var(--surface); }
+  .prompt-text { display: block; width: 100%; margin: 0 0 14px; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1.55; resize: none; field-sizing: content; min-height: 7em; }
+  .mode-field { margin-top: 14px; }
+  .mode-field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .mode-field .prompt-text { min-height: 0; padding: 10px 12px; background: var(--canvas); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .mode-field .button { min-height: 36px; padding-block: 6px; }
+  .mode-select { margin-top: 14px; }
+  .prompt-text:focus { outline-offset: 2px; }
+  .status { display: inline; margin-left: 8px; font-size: 14px; }
+  code { font: 14px/1.5 "IBM Plex Mono", ui-monospace, monospace; overflow-wrap: anywhere; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  caption { text-align: left; color: var(--muted); margin-bottom: 6px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; background: var(--surface); }
+  .number { text-align: right; font-variant-numeric: tabular-nums; }
+  #challenge2 th:first-child { white-space: nowrap; }
+  .submit-note { padding: 16px 20px; border-left: 3px solid var(--blue); background: var(--surface); margin-top: 16px; }
+  footer { color: #f4f4f4; background: var(--ink); padding-block: 24px; font-size: 14px; }
+  @media (max-width: 760px) {
+    .wrap { width: calc(100% - 32px); }
+    .split, .sample-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .hero { padding-block: 44px 32px; }
+  }
+  @media (max-width: 560px) {
+    .query-map { padding: 12px; }
+    .table-map { grid-template-columns: minmax(0, 1fr); }
+    .table-link { padding-block: 6px; }
+    .table-link .key { width: auto; }
+    .flow { grid-template-columns: minmax(0, 1fr); }
+    .flow .map-arrow { transform: rotate(90deg); }
+  }
+  @media (max-width: 430px) {
+    nav a { padding-inline: 6px; }
+    .bar-inner { gap: 6px; }
+    .brand { font-size: 14px; }
+    .tile { padding: 14px; }
+    th, td { padding-inline: 6px; }
+    .sample-table th, .sample-table td { padding-inline: 5px; }
+  }
+
+  /* Shared guide navigation. Relative links also work on GitHub Pages. */
+  .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-inline-start: auto; min-width: 0; }
+  .home-link { display: inline-flex; align-items: center; gap: 16px; flex-shrink: 0; min-height: 44px; padding: 8px 0; color: var(--blue); font-size: 14px; font-weight: 500; line-height: 1.4; white-space: nowrap; text-decoration: none; }
+  .home-link::before { content: ""; width: 1px; height: 16px; background: var(--border); }
+  .home-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  @media (max-width: 672px) {
+    html { scroll-padding-top: 120px; }
+    .bar-inner { align-items: flex-start; }
+    .bar-inner > .brand { display: flex; align-items: center; min-height: 44px; }
+    .header-actions { flex: 1; flex-wrap: wrap; gap: 4px 8px; }
+    .header-actions nav { order: 2; flex-basis: 100%; flex-wrap: wrap; justify-content: flex-end; }
+    .home-link { order: 1; padding-inline: 0; font-size: 12px; }
+    .home-link::before { display: none; }
+  }
+
+  .section-heading { margin-bottom: 20px; padding: 16px 20px; color: #fff; background: var(--blue); }
+  .section-heading > h2 { margin: 0; color: inherit; font-size: clamp(20px, 2.4vw, 24px); font-weight: 600; line-height: 1.35; }
+  .section-heading > .eyebrow, .section-heading > .time { margin: 0 0 8px; color: inherit; font-size: 14px; }
+  .section-heading > .section-marker { gap: 6px 14px; }
+  .section-heading > .section-marker strong { color: inherit; font-size: 18px; font-weight: 600; line-height: 1.35; }
+  .section-heading > .section-marker span { font-size: 14px; }
+  @media (max-width: 672px) {
+    .section-heading { padding: 14px 16px; }
+  }
+  @media print {
+    .home-link { display: none; }
+    .section-heading { color: var(--ink); background: #fff; border-bottom: 2px solid var(--blue); }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap bar-inner">
+    <span class="brand">IBM Bob</span>
+    <div class="header-actions">
+      <nav aria-label="실습 순서">
+        <a href="#setup">설정</a>
+        <a href="#challenge1">시연</a>
+        <a href="#challenge2">SQL 튜닝</a>
+      </nav>
+      <a class="home-link" href="./index.html">홈으로 돌아가기</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <p class="label">공통 실습 2 · 20분</p>
+      <h1>IBM Bob으로<br>Db2 SQL 작성하고 개선하기</h1>
+      <p class="intro">Db2 전용 모드와 프로젝트 규칙을 만듭니다. 진행자와 함께 결제 조회 SQL을 개선한 뒤, 각자 야간 배치 SQL을 튜닝하고 Db2 조회 시간을 비교합니다.</p>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="wrap">
+      <h3>실습 시작 전</h3>
+      <ol>
+        <li>IBM Bob IDE에 로그인합니다.</li>
+        <li>진행자가 배포한 최신 <code>db2-sql-lab.zip</code>을 풀고 Bob IDE에서 <code>db2-sql-lab</code> 폴더를 엽니다.</li>
+      </ol>
+      <div class="tile mcp-intro">
+        <h3>Bob에서 실제 Db2 조회하기</h3>
+        <p>실습 폴더에는 Db2 MCP 서버 <code>db2-sql-lab</code> 연결이 미리 설정되어 있습니다. Bob에게 SQL 실행을 요청하고 승인하면, Bob이 <code>run_query</code> 도구를 호출합니다. 이 도구가 실제 실습용 Db2에서 SQL을 실행하면 Bob이 결과 미리보기와 실행 시간을 채팅에 보여줍니다.</p>
+        <p><code>run_query</code>는 데이터를 읽는 <code>SELECT</code> 조회만 실행합니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section id="setup" class="section" aria-labelledby="setup-heading">
+      <div class="section-heading">
+        <p class="time">0–6분 · 진행자와 함께</p>
+        <h2 id="setup-heading">프로젝트 모드와 AGENTS.md 만들기</h2>
+      </div>
+      <p>모드에서 Bob의 역할과 도구를 정합니다. <code>AGENTS.md</code>에는 실습 스키마와 인덱스, 업무 규칙, SQL 실행·비교 방법을 정리합니다.</p>
+      <div class="split">
+        <div class="tile prompt">
+          <h3>1. Bob IDE에서 프로젝트 모드 만들기</h3>
+          <p>Bob 패널의 톱니바퀴에서 <strong>설정 → 모드</strong>를 열고 <strong>+</strong>를 누릅니다. 아래 순서대로 여덟 항목을 입력하거나 선택합니다.</p>
+          <table>
+            <thead><tr><th scope="col">Bob IDE 입력 항목</th><th scope="col">실습 입력값</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">슬러그</th><td><code>db2-sql-lab</code></td></tr>
+              <tr><th scope="row">이름</th><td>Db2 SQL 실습</td></tr>
+              <tr><th scope="row">설명</th><td>Db2 스키마와 인덱스를 확인하고 조회 SQL을 튜닝합니다.</td></tr>
+              <tr><th scope="row">범위</th><td><strong>프로젝트</strong>를 선택합니다.</td></tr>
+              <tr>
+                <th scope="row"><label for="mode-role">역할 정의</label></th>
+                <td class="mode-field" data-copy>
+                  <textarea class="prompt-text" id="mode-role" readonly rows="3">당신은 Db2 LUW를 사용하는 운영 DBA입니다. 조회 SQL을 검토하고 개선 효과를 측정합니다.</textarea>
+                  <button class="button secondary" type="button">역할 정의 복사</button><span class="status" role="status"></span>
+                </td>
+              </tr>
+              <tr><th scope="row">사용 시기</th><td>가맹점 결제 조회 SQL을 작성하거나 야간 배치 SQL을 튜닝할 때 사용합니다.</td></tr>
+              <tr>
+                <th scope="row"><label for="mode-instructions">모드별 커스텀 지침</label></th>
+                <td class="mode-field" data-copy>
+                  <textarea class="prompt-text" id="mode-instructions" readonly rows="4">- 실행만 요청받으면 지정한 SQL을 그대로 실행합니다.
+- 튜닝을 요청받으면 결과를 유지하면서 개선안을 만들고, 실측값을 바탕으로 변경 이유를 짧게 설명합니다.</textarea>
+                  <button class="button secondary" type="button">지침 복사</button><span class="status" role="status"></span>
+                </td>
+              </tr>
+              <tr><th scope="row">사용 가능한 도구</th><td><strong>Read</strong>, <strong>Edit</strong>, <strong>MCP</strong>를 선택합니다.</td></tr>
+            </tbody>
+          </table>
+          <p class="mode-select"><strong>저장</strong>을 누르고 Bob 채팅의 모드 선택 메뉴에서 방금 만든 모드를 고릅니다.</p>
+        </div>
+        <div class="tile prompt">
+          <h3>2. AGENTS.md 작성</h3>
+          <p><code>db2-sql-lab</code> 최상위에 <code>AGENTS.md</code>를 만들고 아래 내용을 붙여넣어 저장합니다. Bob은 새 대화에서 이 파일을 기본으로 읽습니다. 저장한 뒤 새 대화를 열어 실습을 시작합니다.</p>
+          <details data-copy>
+            <summary>AGENTS.md 내용 보기</summary>
+            <textarea class="prompt-text" aria-label="AGENTS.md 내용" readonly rows="18"># Db2 SQL 실습 규칙
+
+## 공통 규칙
+
+- 모든 실습 테이블은 Db2 LUW의 `BOB_SQL_LAB` 스키마에 있으며 합성 데이터만 담고 있다. 조회 SQL에서 테이블 이름에 이 스키마를 붙인다.
+- SQL을 작성하거나 튜닝할 때 아래 업무 규칙과 관련 DDL을 읽고, 키·제약조건·자료형·인덱스 선두 열과 열 순서를 확인한다.
+- 원본 파일은 그대로 두고 개선안을 조회 SQL 한 문장으로 저장한다. 결과 컬럼과 자료형, 중복, NULL, 0건, 날짜 경계, 정렬을 유지한다.
+
+## 가맹점별 승인 결제
+
+실습 데이터는 가맹점 607개와 결제 96,016건입니다.
+
+| 테이블 | 행의 의미와 컬럼 | 키와 인덱스 |
+| --- | --- | --- |
+| `MERCHANT` | 가맹점 1개. `MERCHANT_ID INTEGER`, `MERCHANT_NAME VARCHAR(40)`, `REGION VARCHAR(10)`, `ACTIVE_YN CHAR(1)`. 전부 NOT NULL. | PK `(MERCHANT_ID)`. 인덱스 `(REGION, ACTIVE_YN, MERCHANT_ID)`. |
+| `PAYMENT` | 거래 1건. `PAYMENT_ID INTEGER`, `MERCHANT_ID INTEGER`, `PAYMENT_TS TIMESTAMP(6)`, `PAYMENT_STATUS VARCHAR(10)`, `AMOUNT DECIMAL(12,2)`. 전부 NOT NULL. | PK `(PAYMENT_ID)`. FK `MERCHANT_ID → MERCHANT.MERCHANT_ID`. 인덱스 `(PAYMENT_TS, PAYMENT_STATUS)`, `(MERCHANT_ID, PAYMENT_STATUS, PAYMENT_TS)`. |
+
+- 조회 대상은 서울(`SEOUL`)의 활성(`Y`) 가맹점 전체입니다. 조건을 충족하는 결제가 0건이어도 결과에 포함하고 건수와 금액은 0을 반환합니다.
+- 결제 승인 상태는 `APPROVED`입니다. 2026-10-15의 시작 시각은 포함하고 다음 날 시작 시각은 제외합니다. 동일 금액의 결제도 거래 ID가 다르면 각각 집계합니다.
+- DDL은 `sql/challenge1.sql`, 원본은 `queries/demo-baseline.sql`, 개선안은 `solutions/merchant-approvals.sql`이다. `MERCHANT_ID` 오름차순으로 비교한다.
+
+## 야간 배치 SLA 예외
+
+실습 데이터는 일정 100,000건과 실행 이력 136,000건입니다.
+
+| 테이블 | 행의 의미와 컬럼 | 키와 인덱스 |
+| --- | --- | --- |
+| `BATCH_SCHEDULE` | 업무일별 작업 일정 1개. `BUSINESS_DATE DATE`, `JOB_ID INTEGER`, `JOB_NAME VARCHAR(32)`, `DEADLINE_TS TIMESTAMP`. 전부 NOT NULL. | PK `(BUSINESS_DATE, JOB_ID)`. |
+| `BATCH_RUN` | 일정의 실행 시도 1건. `BUSINESS_DATE DATE`, `JOB_ID INTEGER`, `ATTEMPT_NO SMALLINT`, `RUN_STATUS VARCHAR(9)`, `START_TS TIMESTAMP`, `END_TS TIMESTAMP`. `END_TS`만 NULL 가능. | PK `(JOB_ID, BUSINESS_DATE, ATTEMPT_NO)`. FK `(BUSINESS_DATE, JOB_ID) → BATCH_SCHEDULE`. 인덱스 `(BUSINESS_DATE, JOB_ID, RUN_STATUS, END_TS)`. |
+
+- 2026-10-01부터 2026-10-07까지, 작업 번호(`JOB_ID`) 1–100의 일정만 조회합니다. 같은 작업도 날짜가 다르면 별도 일정입니다.
+- 시도 건수는 상태와 무관하게 모든 실행 이력을 셉니다. 실패 건수는 `FAILED`만 셉니다. 완료 시각은 `SUCCESS`의 NULL이 아닌 `END_TS` 중 가장 빠른 값입니다.
+- 시도가 없으면 `MISSED`, 시도가 있으나 완료된 성공이 없으면 `NO_SUCCESS`, 최초 성공 완료가 마감 시각 뒤이면 `LATE`입니다. 마감 정각과 그 이전 성공은 결과에서 제외합니다. 다음 날 완료는 해당 일정의 `DEADLINE_TS`와 비교합니다.
+- DDL은 `sql/challenge2.sql`, 원본은 `queries/challenge2-baseline.sql`, 개선안은 `solutions/challenge2-improved.sql`이다. 업무일과 작업 ID 오름차순으로 비교한다.
+
+## 실행과 비교
+
+- 지정한 SQL을 실행해 달라는 요청에는 파일의 SQL을 그대로 읽어 실습용 읽기 전용 MCP의 `run_query`로 실행한다. 승인 요청에는 실행할 SQL이 표시된다.
+- 정상 응답이면 미리보기 첫 세 행과 SQL 실행 시간(`query_elapsed_ms`), MCP 대기 시간(`queue_wait_ms`), Db2 연결 시간(`db_connect_ms`)을 보여준다. 이어지는 비교에 실제 응답값을 사용한다.
+- 개선 후 비교를 요청받으면 개선안을 한 번 실행해 직전 원본의 컬럼과 미리보기 행을 비교하고, SQL 시간과 단축률을 보여준다. 원본 측정값이 없으면 원본도 실행한다.
+- 반복 비교 시 원본과 개선안을 번갈아 순차 실행하고, 이전 실행은 준비 실행으로 둔다. 요청한 횟수만큼 양쪽이 성공하면 중앙값과 단축률을 보여준다. 혼잡이나 오류가 나면 멈추고 성공 횟수와 실측값만 알려준다.
+- 미리보기가 일치하면 확인한 행 범위를 표시한다. MCP가 실패하거나 시간이 없으면 측정할 수 없다고 알리고, 실행계획을 확인하기 전에는 인덱스가 실제로 사용됐다고 단정하지 않는다.</textarea>
+            <button class="button secondary" type="button">AGENTS.md 복사</button><span class="status" role="status"></span>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="challenge1" class="section" aria-labelledby="challenge1-heading">
+      <div class="section-heading">
+        <p class="time">6–11분 · 진행자와 함께</p>
+        <h2 id="challenge1-heading">시연 · 가맹점별 승인 결제 조회 튜닝</h2>
+      </div>
+      <p>일일 결제 현황을 확인합니다. <strong>2026년 10월 15일, 서울의 활성 가맹점별로 승인 결제가 몇 건이고 합계는 얼마일까요?</strong></p>
+      <figure class="query-map">
+        <figcaption><strong>가맹점별 결제 현황을 만드는 흐름</strong><span>Db2 <code>BOB_SQL_LAB</code> · 합성 데이터</span></figcaption>
+        <div class="table-map">
+          <div class="table-card">
+            <h3><code>MERCHANT</code><span class="table-count">607곳</span></h3>
+            <p>가맹점 한 곳당 한 행 · 이름, 지역, 활성 여부</p>
+          </div>
+          <div class="table-link"><span>가맹점 ID로 연결</span><span class="key"><code>MERCHANT_ID</code></span></div>
+          <div class="table-card">
+            <h3><code>PAYMENT</code><span class="table-count">96,016건</span></h3>
+            <p>결제 한 건당 한 행 · 결제 시각, 상태, 금액</p>
+          </div>
+        </div>
+        <span class="map-arrow" aria-hidden="true">↓</span>
+        <div class="flow">
+          <div class="flow-card">
+            <h3>원본 SQL · 가맹점별 승인 결제 집계</h3>
+            <p>서울의 활성 가맹점을 고른 뒤, 10월 15일 승인 거래의 건수와 금액 합계를 구합니다.</p>
+          </div>
+          <span class="map-arrow" aria-hidden="true">→</span>
+          <div class="flow-card flow-result">
+            <h3>조회 결과 · 가맹점별 한 행</h3>
+            <p>가맹점 ID와 이름, 승인 건수, 합계가 나옵니다. 승인 결제가 없어도 건수와 합계를 0으로 표시합니다. 실습 데이터의 전체 결과는 272행입니다.</p>
+          </div>
+        </div>
+      </figure>
+      <details class="sample-data" open>
+        <summary>가맹점과 결제 데이터 예시</summary>
+        <div class="sample-grid">
+          <div class="sample-table" role="region" aria-label="가맹점 테이블 예시" tabindex="0">
+            <table>
+              <caption><code>MERCHANT</code> · 가맹점 3곳</caption>
+              <thead><tr><th scope="col">가맹점 번호</th><th scope="col">가맹점 이름</th><th scope="col">지역</th><th scope="col">활성 여부</th></tr></thead>
+              <tbody>
+                <tr><th scope="row" class="sample-key">601</th><td>Sample boundary merchant</td><td>SEOUL</td><td>Y</td></tr>
+                <tr><th scope="row" class="sample-key">602</th><td>Sample merchant with no payments</td><td>SEOUL</td><td>Y</td></tr>
+                <tr><th scope="row" class="sample-key">606</th><td>Sample same-amount merchant</td><td>SEOUL</td><td>Y</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="sample-table" role="region" aria-label="결제 테이블 예시" tabindex="0">
+            <table>
+              <caption><code>PAYMENT</code> · 결제 5건</caption>
+              <thead><tr><th scope="col">결제 번호</th><th scope="col">가맹점 번호</th><th scope="col">결제 시각 (2026년)</th><th scope="col">상태</th><th scope="col" class="number">금액</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">96001</th><td class="sample-key">601</td><td>10/14 <time datetime="2026-10-14T23:59:59.999999">23:59:59.999999</time></td><td>APPROVED</td><td class="number">900.00</td></tr>
+                <tr><th scope="row">96002</th><td class="sample-key">601</td><td>10/15 <time datetime="2026-10-15T00:00:00">00:00:00</time></td><td>APPROVED</td><td class="number">100.00</td></tr>
+                <tr><th scope="row">96003</th><td class="sample-key">601</td><td>10/15 <time datetime="2026-10-15T23:59:59.999999">23:59:59.999999</time></td><td>APPROVED</td><td class="number">200.00</td></tr>
+                <tr><th scope="row">96010</th><td class="sample-key">606</td><td>10/15 <time datetime="2026-10-15T09:00:00">09:00:00</time></td><td>APPROVED</td><td class="number">75.00</td></tr>
+                <tr><th scope="row">96011</th><td class="sample-key">606</td><td>10/15 <time datetime="2026-10-15T09:00:00">09:00:00</time></td><td>APPROVED</td><td class="number">75.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p>가맹점 번호로 두 표를 연결합니다. 예를 들어 <strong>601번</strong>의 결제 중 10월 15일 승인 거래 두 건만 집계하면 <strong>2건, 합계 300.00</strong>입니다.</p>
+      </details>
+      <details class="sql-source">
+        <summary>원본 SQL 보기 <code>queries/demo-baseline.sql</code></summary>
+        <pre tabindex="0" aria-label="가맹점 결제 원본 SQL"><code data-sql-source="queries/demo-baseline.sql">-- Daily approved payments per active Seoul merchant.
+-- The legacy report compares export-formatted merchant IDs and payment dates,
+-- then performs separate lookups for count and amount within the weekly extract.
+SELECT
+    M.MERCHANT_ID,
+    M.MERCHANT_NAME,
+    (
+        SELECT COUNT(*)
+        FROM BOB_SQL_LAB.PAYMENT P
+        WHERE TRIM(CHAR(P.MERCHANT_ID)) = TRIM(CHAR(M.MERCHANT_ID))
+          AND P.PAYMENT_STATUS = 'APPROVED'
+          AND P.PAYMENT_TS &gt;= TIMESTAMP('2026-10-12-00.00.00')
+          AND P.PAYMENT_TS &lt; TIMESTAMP('2026-10-19-00.00.00')
+          AND VARCHAR_FORMAT(P.PAYMENT_TS, 'YYYY-MM-DD') = '2026-10-15'
+    ) AS APPROVED_COUNT,
+    DECIMAL(COALESCE(
+        (
+            SELECT SUM(P.AMOUNT)
+            FROM BOB_SQL_LAB.PAYMENT P
+            WHERE TRIM(CHAR(P.MERCHANT_ID)) = TRIM(CHAR(M.MERCHANT_ID))
+              AND P.PAYMENT_STATUS = 'APPROVED'
+              AND P.PAYMENT_TS &gt;= TIMESTAMP('2026-10-12-00.00.00')
+          AND P.PAYMENT_TS &lt; TIMESTAMP('2026-10-19-00.00.00')
+          AND VARCHAR_FORMAT(P.PAYMENT_TS, 'YYYY-MM-DD') = '2026-10-15'
+        ), 0
+    ), 18, 2) AS APPROVED_TOTAL
+FROM BOB_SQL_LAB.MERCHANT M
+WHERE M.REGION = 'SEOUL' AND M.ACTIVE_YN = 'Y'
+ORDER BY M.MERCHANT_ID;
+</code></pre>
+      </details>
+      <p class="sql-cost"><strong>느릴 수 있는 이유</strong> · 가맹점마다 같은 결제 데이터를 건수와 합계용으로 따로 읽습니다. 가맹점 ID와 결제 시각을 문자열로 바꿔 비교하는 조건은 인덱스로 대상 행을 좁히기 어렵게 할 수 있습니다.</p>
+      <div class="split">
+        <div class="tile prompt">
+          <div class="mode-field" data-copy>
+            <h3>1. 원본 실행하기</h3>
+            <textarea class="prompt-text" aria-label="가맹점 승인 결제 원본 측정 프롬프트" readonly rows="2">@/queries/demo-baseline.sql 한 번 실행해줘.</textarea>
+            <button class="button secondary" type="button">원본 실행 프롬프트 복사</button><span class="status" role="status"></span>
+          </div>
+          <div class="mode-field" data-copy>
+            <h3>2. Bob에게 원본 설명 듣기</h3>
+            <textarea class="prompt-text" aria-label="가맹점 승인 결제 분석 프롬프트" readonly rows="3">방금 실행한 쿼리가 어떤 데이터를 조회하고, 어느 부분이 느릴 수 있는지 설명해줘. 설명만 먼저 해줘.</textarea>
+            <button class="button secondary" type="button">분석 프롬프트 복사</button><span class="status" role="status"></span>
+          </div>
+          <div class="mode-field" data-copy>
+            <h3>3. SQL 개선하고 결과 확인하기</h3>
+            <p class="exercise-note">Bob의 설명을 읽고 수정 방향을 확인한 뒤 요청합니다.</p>
+            <textarea class="prompt-text" aria-label="가맹점 승인 결제 튜닝 프롬프트" readonly rows="3">그럼 결과가 같도록 더 빠르게 고쳐줘. 개선안도 실행해서 결과와 시간을 원본과 비교해줘.</textarea>
+            <button class="button secondary" type="button">튜닝 프롬프트 복사</button><span class="status" role="status"></span>
+          </div>
+        </div>
+        <div class="tile result-table" role="region" aria-label="시연 SQL 결과" tabindex="0">
+          <table>
+            <caption>전체 272행</caption>
+            <thead><tr><th scope="col">가맹점 번호</th><th scope="col">가맹점 이름</th><th scope="col" class="number">승인 건수</th><th scope="col" class="number">승인 합계</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1</th><td>Sample merchant 1</td><td class="number">1</td><td class="number">6,186.00</td></tr>
+              <tr><th scope="row">4</th><td>Sample merchant 4</td><td class="number">1</td><td class="number">35,042.00</td></tr>
+              <tr><th scope="row">5</th><td>Sample merchant 5</td><td class="number">1</td><td class="number">34,076.00</td></tr>
+              <tr><td class="omitted" colspan="4">… 266행 생략 …</td></tr>
+              <tr><th scope="row">603</th><td>Sample declined-only merchant</td><td class="number">0</td><td class="number">0.00</td></tr>
+              <tr><th scope="row">606</th><td>Sample same-amount merchant</td><td class="number">2</td><td class="number">150.00</td></tr>
+              <tr><th scope="row">607</th><td>Sample other-day merchant</td><td class="number">0</td><td class="number">0.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="challenge2" class="section" aria-labelledby="challenge2-heading">
+      <div class="section-heading">
+        <p class="time">11–20분 · 개인 실습</p>
+        <h2 id="challenge2-heading">제때 끝나지 않은 야간 작업 찾기</h2>
+      </div>
+      <p>아침에 출근해서 밤사이 자동으로 돌아간 작업을 점검합니다. <strong>2026년 10월 1일부터 7일까지, 야간 작업 1~100번 중 날짜별로 어떤 작업이 마감 시간까지 성공하지 못했나요?</strong></p>
+      <figure class="query-map">
+        <figcaption><strong>작업 일정표와 실제 실행 기록을 비교하는 흐름</strong><span>Db2 <code>BOB_SQL_LAB</code> · 합성 데이터</span></figcaption>
+        <div class="table-map">
+          <div class="table-card">
+            <h3><code>BATCH_SCHEDULE</code><span class="table-count">100,000건</span></h3>
+            <p>작업 일정표 · 어느 날, 어떤 작업을 몇 시까지 끝내야 하는지</p>
+          </div>
+          <div class="table-link"><span>날짜와 작업 번호로 연결</span><span class="key"><code>BUSINESS_DATE + JOB_ID</code></span></div>
+          <div class="table-card">
+            <h3><code>BATCH_RUN</code><span class="table-count">136,000건</span></h3>
+            <p>실제 실행 기록 · 시도할 때마다 실행 상태와 끝난 시각을 기록</p>
+          </div>
+        </div>
+        <span class="map-arrow" aria-hidden="true">↓</span>
+        <div class="flow">
+          <div class="flow-card">
+            <h3>원본 SQL · 정해진 시간까지 끝났는지 확인</h3>
+            <p>실습용 일주일치 일정 700건을 실행 기록과 대조합니다. 작업마다 몇 번 시도했고, 몇 번 실패했고, 처음 성공한 시각이 언제인지 확인합니다.</p>
+          </div>
+          <span class="map-arrow" aria-hidden="true">→</span>
+          <div class="flow-card flow-result">
+            <h3>조회 결과 · 확인이 필요한 작업 목록</h3>
+            <p>제때 끝나지 않은 작업을 날짜별로 한 줄씩 보여줍니다. 이번 데이터에서는 확인이 필요한 일정이 63건입니다.</p>
+          </div>
+        </div>
+      </figure>
+      <details class="sample-data" open>
+        <summary>야간 작업 일정과 실행 기록 예시</summary>
+        <div class="sample-grid">
+          <div class="sample-table" role="region" aria-label="야간 작업 일정 테이블 예시" tabindex="0">
+            <table>
+              <caption><code>BATCH_SCHEDULE</code> · 작업 일정 4건</caption>
+              <thead><tr><th scope="col">일정 날짜</th><th scope="col">작업 번호</th><th scope="col">작업 이름</th><th scope="col">마감 시각</th></tr></thead>
+              <tbody>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">1</th><td>NIGHTLY_BATCH_0001</td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">3</th><td>NIGHTLY_BATCH_0003</td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">5</th><td>NIGHTLY_BATCH_0005</td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">7</th><td>NIGHTLY_BATCH_0007</td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="sample-table" role="region" aria-label="야간 작업 실행 테이블 예시" tabindex="0">
+            <table>
+              <caption><code>BATCH_RUN</code> · 실행 기록 4건</caption>
+              <thead><tr><th scope="col">일정 날짜</th><th scope="col">작업 번호</th><th scope="col">시도 순서</th><th scope="col">실행 상태</th><th scope="col">시작 시각</th><th scope="col">종료 시각</th></tr></thead>
+              <tbody>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">3</th><td>1</td><td>RUNNING</td><td><time datetime="2026-10-01T03:30:00">03:30:00</time></td><td><code>NULL</code></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">5</th><td>1</td><td>SUCCESS</td><td><time datetime="2026-10-01T03:55:00">03:55:00</time></td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">7</th><td>1</td><td>FAILED</td><td><time datetime="2026-10-01T03:30:00">03:30:00</time></td><td><time datetime="2026-10-01T03:35:00">03:35:00</time></td></tr>
+                <tr><td><time datetime="2026-10-01">2026-10-01</time></td><th scope="row" class="sample-key">7</th><td>2</td><td>SUCCESS</td><td><time datetime="2026-10-01T04:00:00">04:00:00</time></td><td><time datetime="2026-10-01T04:05:00">04:05:00</time></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p>날짜와 작업 번호로 두 표를 연결합니다. <strong>1번</strong>은 일정만 있고, <strong>7번</strong>은 일정 하나에 시도가 두 번 있습니다. 7번은 재시도에서 04:05에 성공했으므로 마감인 04:00을 넘겼습니다.</p>
+      </details>
+      <details class="sql-source">
+        <summary>원본 SQL 보기 <code>queries/challenge2-baseline.sql</code></summary>
+        <pre tabindex="0" aria-label="야간 배치 원본 SQL"><code data-sql-source="queries/challenge2-baseline.sql">-- Legacy batch SLA report from a business-date and job-ID text extract.
+-- This legacy report treats integer job IDs as text patterns within each date.
+-- Report operations group 1 (job IDs 1–100) for business dates 2026-10-01 through 2026-10-07.
+-- ATTEMPT_COUNT includes every attempt. FAILED_ATTEMPT_COUNT counts FAILED only.
+-- A success at DEADLINE_TS is on time. Omit on-time entries.
+WITH RUN_SUMMARY AS (
+    SELECT
+        S.BUSINESS_DATE,
+        S.JOB_ID,
+        S.JOB_NAME,
+        S.DEADLINE_TS,
+        (
+            SELECT COUNT(*)
+            FROM BOB_SQL_LAB.BATCH_RUN R
+            WHERE TRIM(CHAR(R.JOB_ID)) LIKE TRIM(CHAR(S.JOB_ID))
+              AND R.BUSINESS_DATE = S.BUSINESS_DATE
+        ) AS ATTEMPT_COUNT,
+        (
+            SELECT COUNT(*)
+            FROM BOB_SQL_LAB.BATCH_RUN R
+            WHERE TRIM(CHAR(R.JOB_ID)) LIKE TRIM(CHAR(S.JOB_ID))
+              AND R.BUSINESS_DATE = S.BUSINESS_DATE
+              AND R.RUN_STATUS = 'FAILED'
+        ) AS FAILED_ATTEMPT_COUNT,
+        (
+            SELECT MIN(R.END_TS)
+            FROM BOB_SQL_LAB.BATCH_RUN R
+            WHERE TRIM(CHAR(R.JOB_ID)) LIKE TRIM(CHAR(S.JOB_ID))
+              AND R.BUSINESS_DATE = S.BUSINESS_DATE
+              AND R.RUN_STATUS = 'SUCCESS'
+        ) AS FIRST_SUCCESS_TS
+    FROM BOB_SQL_LAB.BATCH_SCHEDULE S
+    WHERE S.BUSINESS_DATE &gt;= DATE('2026-10-01')
+      AND S.BUSINESS_DATE &lt; DATE('2026-10-08')
+      AND S.JOB_ID BETWEEN 1 AND 100
+)
+SELECT
+    BUSINESS_DATE,
+    JOB_ID,
+    JOB_NAME,
+    DEADLINE_TS,
+    ATTEMPT_COUNT,
+    FAILED_ATTEMPT_COUNT,
+    FIRST_SUCCESS_TS,
+    CASE
+        WHEN ATTEMPT_COUNT = 0 THEN 'MISSED'
+        WHEN FIRST_SUCCESS_TS IS NULL THEN 'NO_SUCCESS'
+        ELSE 'LATE'
+    END AS SLA_STATUS
+FROM RUN_SUMMARY
+WHERE FIRST_SUCCESS_TS IS NULL OR FIRST_SUCCESS_TS &gt; DEADLINE_TS
+ORDER BY BUSINESS_DATE, JOB_ID;
+</code></pre>
+      </details>
+      <p class="sql-cost"><strong>느릴 수 있는 이유</strong> · 일정마다 시도 횟수, 실패 횟수, 첫 성공 시각을 구하는 세 조회가 같은 실행 이력을 반복해서 읽습니다. 숫자인 작업 ID를 문자열로 바꿔 <code>LIKE</code>로 비교하는 조건도 인덱스 활용을 어렵게 할 수 있습니다.</p>
+      <div class="submit-note"><strong>도전 목표</strong> · 원본과 같은 결과를 유지하면서 <strong>0.10초(100ms) 이내</strong>를 시도합니다. 참가자가 동시에 조회하고 있다면, 같은 시간대에 잰 본인의 원본 대비 <strong>70% 이상 단축</strong>을 목표로 삼으세요.</div>
+      <div class="split result-stack">
+        <div class="tile">
+          <h3>Bob에게 직접 질문하며 튜닝하기</h3>
+          <ol class="activity-steps">
+            <li><strong>원본 실행 시간을 확인하세요.</strong><p>Bob 채팅에서 <code>@/queries/challenge2-baseline.sql</code>을 선택하고 실행을 요청하세요. 응답의 <code>query_elapsed_ms</code>를 기록합니다.</p></li>
+            <li><strong>어떤 작업이 결과에 나오는지 확인해 보세요.</strong><p>Bob에게 일정표와 실행 기록을 어떻게 비교하고, 어떤 경우에 결과에 표시하는지 물어보세요.</p></li>
+            <li><strong>Bob과 수정 계획을 세워 보세요.</strong><p>어떤 부분이 느릴 수 있고 어떻게 바꾸면 좋을지 물어보세요. 현재 결과를 유지할 수 있는 방법을 함께 정하세요.</p></li>
+            <li><strong>개선안을 실행하고 얼마나 빨라졌는지 확인하세요.</strong><p>합의한 계획대로 SQL을 수정하고 실행을 요청하세요. 원본과 미리보기를 대조한 뒤 <code>query_elapsed_ms</code>가 얼마나 줄었는지 비교합니다.</p></li>
+          </ol>
+        </div>
+        <div class="tile result-table" role="region" aria-label="챌린지 SQL 결과" tabindex="0">
+          <table>
+            <caption>전체 63행</caption>
+            <thead><tr><th scope="col">일정 날짜</th><th scope="col">작업 번호</th><th scope="col">작업 이름</th><th scope="col">마감 시각</th><th scope="col" class="number">시도 횟수</th><th scope="col" class="number">실패 횟수</th><th scope="col">첫 성공 시각</th><th scope="col">상태</th></tr></thead>
+            <tbody>
+              <tr><td>2026-10-01</td><th scope="row">1</th><td>NIGHTLY_BATCH_0001</td><td><time datetime="2026-10-01T04:00:00">2026-10-01 04:00:00</time></td><td class="number">0</td><td class="number">0</td><td><code>NULL</code></td><td><code>MISSED</code></td></tr>
+              <tr><td>2026-10-01</td><th scope="row">2</th><td>NIGHTLY_BATCH_0002</td><td><time datetime="2026-10-01T04:00:00">2026-10-01 04:00:00</time></td><td class="number">1</td><td class="number">1</td><td><code>NULL</code></td><td><code>NO_SUCCESS</code></td></tr>
+              <tr><td>2026-10-01</td><th scope="row">3</th><td>NIGHTLY_BATCH_0003</td><td><time datetime="2026-10-01T04:00:00">2026-10-01 04:00:00</time></td><td class="number">1</td><td class="number">0</td><td><code>NULL</code></td><td><code>NO_SUCCESS</code></td></tr>
+              <tr><td class="omitted" colspan="8">… 57행 생략 …</td></tr>
+              <tr><td>2026-10-07</td><th scope="row">96</th><td>NIGHTLY_BATCH_0096</td><td><time datetime="2026-10-07T04:00:00">2026-10-07 04:00:00</time></td><td class="number">1</td><td class="number">1</td><td><code>NULL</code></td><td><code>NO_SUCCESS</code></td></tr>
+              <tr><td>2026-10-07</td><th scope="row">97</th><td>NIGHTLY_BATCH_0097</td><td><time datetime="2026-10-07T04:00:00">2026-10-07 04:00:00</time></td><td class="number">1</td><td class="number">0</td><td><code>NULL</code></td><td><code>NO_SUCCESS</code></td></tr>
+              <tr><td>2026-10-07</td><th scope="row">98</th><td>NIGHTLY_BATCH_0098</td><td><time datetime="2026-10-07T04:00:00">2026-10-07 04:00:00</time></td><td class="number">1</td><td class="number">0</td><td><time datetime="2026-10-07T04:01:00">2026-10-07 04:01:00</time></td><td><code>LATE</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+<footer><div class="wrap">IBK 운영부 IBM Bob 실습</div></footer>
+<script>
+  for (const prompt of document.querySelectorAll('[data-copy]')) {
+    const field = prompt.querySelector('textarea');
+    const button = prompt.querySelector('button');
+    const status = prompt.querySelector('[role="status"]');
+
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(field.value);
+        status.textContent = '복사했습니다.';
+      } catch {
+        field.focus();
+        field.select();
+        status.textContent = document.execCommand('copy')
+          ? '복사했습니다.'
+          : '선택된 내용을 복사해 주세요.';
+      }
+    });
+  }
+</script>
+</body>
+</html>
