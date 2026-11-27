@@ -14,6 +14,7 @@
     @media(max-width:900px){.wrap{width:calc(100% - 40px)}.brand span{display:none}.nav a{padding-inline:8px}.two,.result-grid{grid-template-columns:1fr}.journey li{padding:14px 12px}.hero{padding-top:36px}.hero h1{letter-spacing:-.7px}}
     @media(max-width:620px){html{scroll-padding-top:120px}.wrap{width:calc(100% - 32px)}.topbar .wrap{display:block;padding-top:12px}.brand{display:block}.brand span{display:inline}.nav{margin-top:6px;overflow-x:auto}.nav a{padding:10px 8px;font-size:14px}.hero{padding:28px 0}.hero .intro{font-size:17px}.journey{grid-template-columns:1fr 1fr}.journey li:nth-child(3){border-left:0}.journey li:nth-child(n+3){border-top:1px solid var(--line)}.journey strong{font-size:16px}.section{padding:30px 0}.role-list{grid-template-columns:1fr}.tile{padding:18px}.field-grid{grid-template-columns:1fr}.field-grid dt{border-bottom:0;padding-bottom:4px}.field-grid dd{padding-top:4px}.field-grid dt:last-of-type{border-bottom:0}pre{padding:16px;font-size:15px;line-height:1.9}.mini-cards{gap:5px}.mini-cards span{padding:10px 4px;font-size:14px}.one-line pre{font-size:20px}.mode-change{padding:18px}.mode-change .mode-name{font-size:23px}}
     @media print{.topbar,.skip,.lightbox{display:none}.wrap{width:100%}.hero,.section{padding-block:20px}.screen button{cursor:default}.screen img{max-height:650px;object-fit:contain}.journey{grid-template-columns:repeat(4,1fr)}details>summary{list-style:none}details .details-body{display:block}.two,.result-grid{display:block}.two>*+*,.result-grid>*+*{margin-top:20px}pre{font-size:12px}.example,.tile,.checks{break-inside:avoid}}
+    .procedure-title{margin:30px 0 12px;font-size:22px;font-weight:700;line-height:1.4}.procedure-title+.journey{margin-top:0}
   </style>
 </head>
 <body>
@@ -28,35 +29,36 @@
   <div class="hero wrap" id="top">
     <p class="eyebrow">IBM Bob · 운영 자료 분석 실습</p>
     <h1>배치 지연을 분석하고,<br>먼저 확인할 사항을 대시보드로 정리하기</h1>
-    <p class="intro">공통 원칙은 Rule에, 반복할 분석 절차는 Skill에 담습니다. Bob에게 Skill을 보완하게 한 뒤 분석에 적용하고, 마지막에 준비된 Mode로 전환해 대시보드를 만듭니다.</p>
-    <ol class="journey" aria-label="실습 흐름">
+    <p class="intro">배치 지연이 확인되어 수집한 로그와 운영 지표로 원인 후보와 서비스 영향을 살펴봅니다. 공통 원칙은 Rule로, 세부 업무 절차는 Skill로 정리합니다.</p>
+    <details><summary>업무 상황과 제공 자료</summary><div class="details-body">
+      <p>초동점검에서 일배치가 평소보다 오래 걸렸다는 사실을 확인했습니다. 운영 담당자로서 <strong>어느 단계가 느려졌는지, API에 어떤 영향이 있는지, 무엇부터 확인할지</strong> 조사합니다.</p>
+      <div class="table-scroll"><table><thead><tr><th scope="col">파일</th><th scope="col">확인할 내용</th></tr></thead><tbody>
+        <tr><td><code>batch_history.log</code></td><td>배치와 단계별 시작·종료, 수행 시간, 처리 건수</td></tr>
+        <tr><td><code>ops_metrics.csv</code></td><td>5분 단위 API 응답시간과 오류 등 운영 지표</td></tr>
+        <tr><td><code>db_diagnostics.log</code></td><td>관련 DB 이벤트와 원인 후보를 뒷받침할 관측</td></tr>
+      </tbody></table></div>
+    </div></details>
+    <h2 class="procedure-title" id="procedure-title">실습 절차</h2>
+    <ol class="journey" aria-labelledby="procedure-title">
       <li><a href="#step1"><strong>1. 직접 작성</strong><span>Rule은 파일에 · Skill은 UI에</span></a></li>
       <li><a href="#step2"><strong>2. Skill 보완</strong><span>Bob에게 분석 기준 추가 요청</span></a></li>
       <li><a href="#step3-1"><strong>3-1. 배치 이상 분석</strong><span>Agent에서 분석 결과 저장</span></a></li>
       <li><a href="#step3-2"><strong>3-2. 대시보드 작성</strong><span>대시보드 Mode로 전환</span></a></li>
     </ol>
+    <div class="role-list">
+      <div class="tile"><strong>Rule · 공통으로 지킬 원칙</strong><p>원본 보호, 수치의 근거, 언어와 저장 위치를 정합니다. 분석과 대시보드 작성 단계에 공통으로 적용합니다.</p></div>
+      <div class="tile"><strong>Skill · 세부 업무 절차</strong><p>정상 비교, 지연 단계와 서비스 영향 확인, 근거와 우선순위 정리 방법을 담습니다.</p></div>
+    </div>
   </div>
   <div class="wrap">
     <section class="section" id="setup" aria-labelledby="setup-title">
-      <p class="eyebrow">시작 전</p><h2 id="setup-title">실습 폴더와 Agent 모드를 확인하세요</h2>
+      <p class="eyebrow">시작 전</p><h2 id="setup-title">실습 폴더를 열고 입력할 준비를 하세요</h2>
       <ol class="steps">
         <li><strong>Bob에서 전달받은 실습 폴더 자체를 엽니다.</strong><p>파일 탐색기에 <code>data/</code>가 보이는지 확인합니다.</p></li>
-        <li><strong>채팅의 현재 모드를 Agent로 선택합니다.</strong><p>1단계부터 3-1까지 Agent를 사용하고, 3-2에서 대시보드 Mode로 바꿉니다.</p></li>
         <li><strong>이 가이드와 Bob을 나란히 놓습니다.</strong><p>입력할 예문은 모두 이 페이지에 있습니다. 각 단계의 예문을 보면서 지정된 위치에 직접 입력합니다.</p></li>
       </ol>
-      <div class="role-list">
-        <div class="tile"><strong>Rule · 공통으로 지킬 원칙</strong><p>원본 보호, 수치의 근거, 언어와 저장 위치를 정합니다. 분석과 대시보드 작성 단계에 공통으로 적용합니다.</p></div>
-        <div class="tile"><strong>Skill · 반복할 분석 절차</strong><p>정상 비교, 지연 단계와 서비스 영향 확인, 근거와 우선순위 정리 방법을 담습니다.</p></div>
-      </div>
-      <details><summary>업무 상황과 제공 자료</summary><div class="details-body">
-        <p>초동점검에서 일배치가 평소보다 오래 걸렸다는 사실을 확인했습니다. 운영 담당자로서 <strong>어느 단계가 느려졌는지, API에 어떤 영향이 있는지, 무엇부터 확인할지</strong> 조사합니다.</p>
-        <div class="table-scroll"><table><thead><tr><th scope="col">파일</th><th scope="col">확인할 내용</th></tr></thead><tbody>
-          <tr><td><code>batch_history.log</code></td><td>배치와 단계별 시작·종료, 수행 시간, 처리 건수</td></tr>
-          <tr><td><code>ops_metrics.csv</code></td><td>5분 단위 API 응답시간과 오류 등 운영 지표</td></tr>
-          <tr><td><code>db_diagnostics.log</code></td><td>관련 DB 이벤트와 원인 후보를 뒷받침할 관측</td></tr>
-        </tbody></table></div>
-        <p class="small">제공 자료는 교육용 합성 자료이며, 특정 금융기관의 실제 로그가 아닙니다.</p>
-      </div></details>
+
+
     </section>
 
     <section class="section" id="step1" aria-labelledby="step1-title">
